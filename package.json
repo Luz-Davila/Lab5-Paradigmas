@@ -11,7 +11,8 @@
     "test:e2e": "playwright test --project=chromium",
     "test:e2e:headed": "playwright test --project=chromium --headed",
     "test:all": "npm test && npm run test:integration && npm run test:e2e",
-    "security": "snyk test --severity-threshold=high"
+    "security": "snyk test --severity-threshold=high",
+    "security:dev": "snyk test --dev --severity-threshold=high"
   },
   "jest": {
     "testEnvironment": "node",
