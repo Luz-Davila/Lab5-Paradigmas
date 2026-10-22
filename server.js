@@ -24,6 +24,24 @@ io.on('connection', function(socket){
   });
 });
 
-http.listen(port, function(){
-  console.log('listening on *:' + port);
-});
+// Se exporta la app, el servidor y el socket para poder probarlos con
+// Jest + Supertest y socket.io-client sin abrir un puerto fijo.
+function start(puerto) {
+  var puertoFinal = puerto === undefined ? port : puerto;
+
+  return http.listen(puertoFinal, function(){
+    console.log('listening on *:' + puertoFinal);
+  });
+}
+
+// Solo se levanta el servidor con "npm start" o "node server.js".
+if (require.main === module) {
+  start();
+}
+
+module.exports = {
+  app: app,
+  http: http,
+  io: io,
+  start: start
+};
