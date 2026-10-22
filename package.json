@@ -2,7 +2,6 @@
   "dependencies": {
     "express": "*",
     "jquery": "^3.7.1",
-    "mocha": "^10.2.0",
     "socket.io": "*"
   },
   "scripts": {
@@ -11,7 +10,8 @@
     "test:integration": "jest tests/integration --runInBand --env=node",
     "test:e2e": "playwright test --project=chromium",
     "test:e2e:headed": "playwright test --project=chromium --headed",
-    "test:all": "npm test && npm run test:integration && npm run test:e2e"
+    "test:all": "npm test && npm run test:integration && npm run test:e2e",
+    "security": "snyk test --severity-threshold=high"
   },
   "jest": {
     "testEnvironment": "node",
@@ -22,6 +22,7 @@
   "devDependencies": {
     "@playwright/test": "^1.64.1",
     "jest": "^30.5.2",
+    "mocha": "^12.0.3",
     "socket.io-client": "^4.8.4",
     "supertest": "^7.3.1"
   }
