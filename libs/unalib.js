@@ -7,6 +7,9 @@
 var MAX_LONGITUD_MENSAJE = 2000;
 var MAX_LONGITUD_NOMBRE = 50;
 var MAX_LONGITUD_URL = 2048;
+// Limite del JSON crudo, mas holgado que el mensaje, para no cortar el
+// envoltorio (nombre, color, comillas) antes de poder parsearlo.
+var MAX_LONGITUD_JSON = 10000;
 
 var NOMBRE_POR_DEFECTO = 'Anónimo';
 var COLOR_POR_DEFECTO = '#000000';
@@ -22,11 +25,22 @@ var RE_PROTOCOLO_HTTP = /^https?:\/\//i;
 // clasico para romper un atributo HTML e inyectar codigo.
 var RE_CARACTERES_PELIGROSOS = /[<>"'`\\\s]/;
 
+// Caracteres de control C0/C1 y marcadores bidireccionales: no ejecutan
+// codigo, pero corrompen el mensaje y permiten suplantacion visual.
+var RE_CARACTERES_INVISIBLES = /[\u0000-\u001F\u007F-\u009F\u202A-\u202E\u2066-\u2069]/g;
+
 function recortar(texto, maximo) {
   if (typeof texto !== 'string') {
     return '';
   }
   return texto.length > maximo ? texto.slice(0, maximo) : texto;
+}
+
+function limpiarTexto(texto) {
+  if (typeof texto !== 'string') {
+    return '';
+  }
+  return texto.replace(RE_CARACTERES_INVISIBLES, '');
 }
 
 // Convierte texto libre en texto seguro para insertarlo como HTML.
@@ -66,6 +80,12 @@ function analizarUrl(url) {
     var parsed = new URL(limpia);
 
     if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
+      return null;
+    }
+
+    // Se rechazan credenciales incrustadas (https://usuario:clave@host/...):
+    // permiten disfrazar el host real y filtrar secretos.
+    if (parsed.username !== '' || parsed.password !== '') {
       return null;
     }
 
@@ -179,19 +199,19 @@ function validateMessage(msg) {
     return JSON.stringify(resultado);
   }
 
-  var crudo = recortar(msg.trim(), MAX_LONGITUD_MENSAJE);
+  var crudo = recortar(msg.trim(), MAX_LONGITUD_JSON);
   var obj;
 
   try {
     obj = JSON.parse(crudo);
   } catch (e) {
     // Un mensaje que no es JSON se trata como texto plano y se escapa.
-    resultado.mensaje = escapeHtml(crudo);
+    resultado.mensaje = escapeHtml(recortar(limpiarTexto(crudo), MAX_LONGITUD_MENSAJE));
     return JSON.stringify(resultado);
   }
 
   if (typeof obj === 'string') {
-    resultado.mensaje = escapeHtml(recortar(obj.trim(), MAX_LONGITUD_MENSAJE));
+    resultado.mensaje = escapeHtml(recortar(limpiarTexto(obj).trim(), MAX_LONGITUD_MENSAJE));
     return JSON.stringify(resultado);
   }
 
@@ -199,7 +219,9 @@ function validateMessage(msg) {
     return JSON.stringify(resultado);
   }
 
-  var nombre = typeof obj.nombre === 'string' ? recortar(obj.nombre.trim(), MAX_LONGITUD_NOMBRE) : '';
+  var nombre = typeof obj.nombre === 'string'
+    ? recortar(limpiarTexto(obj.nombre).trim(), MAX_LONGITUD_NOMBRE)
+    : '';
   resultado.nombre = escapeHtml(nombre || NOMBRE_POR_DEFECTO);
 
   // Solo se acepta un color en formato #RRGGBB. Cualquier intento de colar
@@ -209,7 +231,7 @@ function validateMessage(msg) {
     : COLOR_POR_DEFECTO;
 
   var contenido = typeof obj.mensaje === 'string'
-    ? recortar(obj.mensaje.trim(), MAX_LONGITUD_MENSAJE)
+    ? recortar(limpiarTexto(obj.mensaje).trim(), MAX_LONGITUD_MENSAJE)
     : '';
 
   if (contenido === '') {
@@ -249,8 +271,11 @@ function validateMessage(msg) {
 module.exports = {
   MAX_LONGITUD_MENSAJE: MAX_LONGITUD_MENSAJE,
   MAX_LONGITUD_NOMBRE: MAX_LONGITUD_NOMBRE,
+  MAX_LONGITUD_URL: MAX_LONGITUD_URL,
+  MAX_LONGITUD_JSON: MAX_LONGITUD_JSON,
   COLOR_POR_DEFECTO: COLOR_POR_DEFECTO,
   escapeHtml: escapeHtml,
+  limpiarTexto: limpiarTexto,
   is_valid_phone: function (phone) {
     // inicializacion lazy
     var isValid = false;

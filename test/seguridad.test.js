@@ -364,6 +364,137 @@ describe('Seguridad del chat UNA', function () {
 
   });
 
+  describe('Endurecimiento de URLs', function () {
+
+    it('debería rechazar una URL con credenciales incrustadas', function () {
+      assert.equal(val.is_valid_url_image('https://usuario:clave@image.com/foto.png'), false);
+      assert.equal(val.is_valid_video_url('https://usuario:clave@video.com/clip.mp4'), false);
+      assert.equal(val.is_valid_yt_video('https://usuario:clave@youtube.com/watch?v=qYwlqx-JLok'), false);
+    });
+
+    it('debería clasificar como texto una URL con credenciales incrustadas', function () {
+      var salida = validar(mensajeJson({
+        nombre: 'Luz',
+        mensaje: 'https://usuario:clave@image.com/foto.png',
+        color: '#FF0000'
+      }));
+
+      assert.equal(salida.tipo, 'texto');
+      assert.equal(salida.url, '');
+    });
+
+    it('debería aceptar el esquema en mayúsculas', function () {
+      assert.equal(val.is_valid_url_image('HTTPS://IMAGE.COM/FOTO.PNG'), true);
+    });
+
+    it('debería rechazar una URL relativa al protocolo', function () {
+      assert.equal(val.is_valid_url_image('//image.com/foto.png'), false);
+    });
+
+    it('debería rechazar los esquemas file y ftp', function () {
+      assert.equal(val.is_valid_url_image('file:///C:/foto.png'), false);
+      assert.equal(val.is_valid_url_image('ftp://image.com/foto.png'), false);
+    });
+
+    it('debería rechazar una URL que supera el largo máximo', function () {
+      var larga = 'https://image.com/' + new Array(2050).join('a') + '.png';
+      assert.equal(val.is_valid_url_image(larga), false);
+    });
+
+    it('debería rechazar una URL con tabulaciones o saltos de línea', function () {
+      assert.equal(val.is_valid_url_image('https://image.com/a\tb.png'), false);
+      assert.equal(val.is_valid_url_image('https://image.com/a\nb.png'), false);
+    });
+
+  });
+
+  describe('Limpieza de caracteres invisibles', function () {
+
+    it('debería eliminar caracteres de control del texto', function () {
+      assert.equal(val.limpiarTexto('hola\u0000mundo\u001F!'), 'holamundo!');
+    });
+
+    it('debería eliminar marcadores bidireccionales', function () {
+      assert.equal(val.limpiarTexto('normal\u202Eotra'), 'normalotra');
+      assert.equal(val.limpiarTexto('a\u2066b\u2069c'), 'abc');
+    });
+
+    it('debería conservar tildes y eñes', function () {
+      assert.equal(val.limpiarTexto('Programación en español'), 'Programación en español');
+    });
+
+    it('debería limpiar el nombre y el mensaje antes de escaparlos', function () {
+      var salida = validar(mensajeJson({
+        nombre: 'Lu\u0000z\u202E',
+        mensaje: 'hola\u0000 mundo',
+        color: '#FF0000'
+      }));
+
+      assert.equal(salida.nombre, 'Luz');
+      assert.equal(salida.mensaje, 'hola mundo');
+    });
+
+  });
+
+  describe('Integridad del JSON y límites', function () {
+
+    it('debería mostrar como texto un mensaje de 2000 caracteres y no el JSON crudo', function () {
+      var largo = new Array(2001).join('a');
+      var salida = validar(mensajeJson({
+        nombre: 'Luz',
+        mensaje: largo,
+        color: '#FF0000'
+      }));
+
+      assert.equal(salida.tipo, 'texto');
+      assert.equal(salida.mensaje.length, val.MAX_LONGITUD_MENSAJE);
+      assert.equal(salida.mensaje.indexOf('"nombre"'), -1);
+      assert.equal(salida.mensaje.indexOf('{'), -1);
+    });
+
+    it('debería recortar el nombre a 50 caracteres', function () {
+      var salida = validar(mensajeJson({
+        nombre: new Array(200).join('n'),
+        mensaje: 'hola',
+        color: '#FF0000'
+      }));
+
+      assert.equal(salida.nombre.length, val.MAX_LONGITUD_NOMBRE);
+    });
+
+    it('debería ignorar un mensaje que llega como objeto o arreglo', function () {
+      var objeto = validar('{"nombre":"Luz","mensaje":{"a":1},"color":"#FF0000"}');
+      var arreglo = validar('{"nombre":"Luz","mensaje":["a","b"],"color":"#FF0000"}');
+
+      assert.equal(objeto.mensaje, '');
+      assert.equal(arreglo.mensaje, '');
+    });
+
+    it('no debería permitir contaminación de prototipos', function () {
+      validar('{"__proto__":{"contaminado":true},"nombre":"Luz","mensaje":"hola","color":"#FF0000"}');
+      validar('{"constructor":{"prototype":{"contaminado":true}},"mensaje":"hola"}');
+
+      assert.equal({}.contaminado, undefined);
+      assert.equal(Object.prototype.contaminado, undefined);
+    });
+
+    it('debería devolver siempre las mismas claves en la respuesta', function () {
+      var salida = validar(mensajeJson({ nombre: 'Luz', mensaje: 'hola', color: '#FF0000' }));
+
+      assert.deepEqual(Object.keys(salida).sort(), ['color', 'mensaje', 'nombre', 'tipo', 'url', 'videoId']);
+    });
+
+    it('debería soportar un JSON de entrada de más de 10 000 caracteres sin lanzar excepciones', function () {
+      var enorme = new Array(12001).join('x');
+
+      assert.doesNotThrow(function () {
+        var salida = validar(enorme);
+        assert.equal(salida.mensaje.length, val.MAX_LONGITUD_MENSAJE);
+      });
+    });
+
+  });
+
   describe('Cliente del chat (index.html)', function () {
 
     var html = fs.readFileSync(path.join(__dirname, '..', 'index.html'), 'utf8');
