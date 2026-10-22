@@ -90,14 +90,23 @@
 
         if (tipo === 'video' && url) {
             return $('<video>')
-                .attr({ src: url, controls: 'controls', preload: 'metadata' })
-                .addClass('media-chat');
+                .attr({
+                    src: url,
+                    controls: 'controls',
+                    preload: 'metadata',
+                    playsinline: 'playsinline'
+                })
+                .addClass('media-chat')
+                .on('error', function () {
+                    $(this).replaceWith($('<span>').text('No se pudo cargar el video: ' + url));
+                });
         }
 
         if (tipo === 'video_youtube' && RE_ID_YOUTUBE.test(msgJson.videoId || '')) {
             return $('<iframe>')
                 .attr({
                     src: 'https://www.youtube.com/embed/' + msgJson.videoId,
+                    title: 'Video de YouTube',
                     frameborder: '0',
                     allow: 'accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture',
                     allowfullscreen: 'allowfullscreen',
@@ -123,6 +132,12 @@
         $('form').submit(function(){
             var nombreTxt = $('#nombre').val() || "Anomimo";
             var mensajeTxt = $('#m').val();
+
+            // No se envian mensajes vacios ni solo espacios.
+            if (!mensajeTxt || !mensajeTxt.trim()) {
+                $('#m').val('');
+                return false;
+            }
 
             if (colorHexTxt == "") {
                 colorHexTxt = getRandomColor();

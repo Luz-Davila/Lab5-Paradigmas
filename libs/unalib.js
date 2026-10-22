@@ -13,7 +13,7 @@ var COLOR_POR_DEFECTO = '#000000';
 
 var RE_COLOR_HEX = /^#[0-9A-Fa-f]{6}$/;
 var RE_EXTENSION_IMAGEN = /\.(png|jpe?g|gif|webp|bmp)$/i;
-var RE_EXTENSION_VIDEO = /\.(mp4|webm|ogv|ogg|mov)$/i;
+var RE_EXTENSION_VIDEO = /\.(mp4|webm|ogv|ogg|mov|m4v)$/i;
 var RE_ID_YOUTUBE = /^[A-Za-z0-9_-]{11}$/;
 var RE_PROTOCOLO_HTTP = /^https?:\/\//i;
 
@@ -139,7 +139,8 @@ function getVideoTag(url) {
     return '';
   }
 
-  return '<video controls preload="metadata" src="' + escapeHtml(parsed.href) + '" ' +
+  return '<video controls preload="metadata" playsinline ' +
+    'src="' + escapeHtml(parsed.href) + '" ' +
     'style="max-height: 400px; max-width: 400px;"></video>';
 }
 
@@ -153,8 +154,9 @@ function getEmbeddedCode(url) {
   // El id ya fue validado con RE_ID_YOUTUBE, por lo que solo puede contener
   // letras, numeros, guion y guion bajo.
   return '<iframe width="560" height="315" src="https://www.youtube.com/embed/' + id + '" ' +
-    'frameborder="0" allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture" ' +
-    'allowfullscreen></iframe>';
+    'title="Video de YouTube" frameborder="0" ' +
+    'allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture" ' +
+    'referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>';
 }
 
 function respuestaBase() {

@@ -296,7 +296,59 @@ describe('Seguridad del chat UNA', function () {
       }));
 
       assert.equal(salida.tipo, 'video');
+      assert.equal(salida.url, 'https://video.com/clip.mp4');
       assert.equal(salida.mensaje.indexOf('<video'), 0);
+      assert.notEqual(salida.mensaje.indexOf('controls'), -1);
+      assert.notEqual(salida.mensaje.indexOf('playsinline'), -1);
+    });
+
+    it('debería aceptar los formatos .webm, .ogv, .mov y .m4v', function () {
+      ['webm', 'ogv', 'mov', 'm4v'].forEach(function (extension) {
+        var salida = validar(mensajeJson({
+          nombre: 'Luz',
+          mensaje: 'https://video.com/clip.' + extension,
+          color: '#FF0000'
+        }));
+
+        assert.equal(salida.tipo, 'video', extension + ' debería ser video');
+      });
+    });
+
+    it('debería clasificar un enlace de YouTube con parámetros extra y extraer solo el id', function () {
+      var salida = validar(mensajeJson({
+        nombre: 'Luz',
+        mensaje: 'https://www.youtube.com/watch?v=qYwlqx-JLok&list=PL123&t=30s',
+        color: '#FF0000'
+      }));
+
+      assert.equal(salida.tipo, 'video_youtube');
+      assert.equal(salida.videoId, 'qYwlqx-JLok');
+      assert.equal(salida.mensaje.indexOf('&list='), -1);
+      assert.equal(salida.mensaje.indexOf('&t='), -1);
+    });
+
+    it('no debería generar el tag de video para una URL inválida', function () {
+      assert.equal(val.getVideoTag('javascript:alert(1)'), '');
+      assert.equal(val.getVideoTag('https://video.com/clip.exe'), '');
+    });
+
+    it('debería preferir imagen sobre video según la extensión', function () {
+      var imagen = validar(mensajeJson({ nombre: 'Luz', mensaje: 'https://x.com/a.jpg', color: '#FF0000' }));
+      var video = validar(mensajeJson({ nombre: 'Luz', mensaje: 'https://x.com/a.mp4', color: '#FF0000' }));
+
+      assert.equal(imagen.tipo, 'imagen');
+      assert.equal(video.tipo, 'video');
+    });
+
+    it('debería escapar el ampersand de una URL con parámetros dentro del tag', function () {
+      var salida = validar(mensajeJson({
+        nombre: 'Luz',
+        mensaje: 'https://image.com/foto.jpg?w=100&h=100',
+        color: '#FF0000'
+      }));
+
+      assert.equal(salida.tipo, 'imagen');
+      assert.notEqual(salida.mensaje.indexOf('&amp;'), -1);
     });
 
     it('debería escapar el HTML en un mensaje de texto normal', function () {
