@@ -2,11 +2,19 @@
 // npm install para descargar los paquetes...
 
 // libreriuas
+var path = require('path');
 var validation = require('./libs/unalib');
-var app = require('express')();
+var express = require('express');
+var app = express();
 var http = require('http').Server(app);
 var io = require('socket.io')(http);
 var port = process.env.PORT || 3000;
+
+// jQuery local: evita depender de un CDN y permite escanearlo con Snyk.
+app.use('/vendor', express.static(path.join(__dirname, 'node_modules/jquery/dist')));
+
+// Medios de prueba locales para las pruebas end-to-end.
+app.use('/fixtures', express.static(path.join(__dirname, 'fixtures')));
 
 // root: presentar html
 app.get('/', function(req, res){

@@ -28,6 +28,12 @@ desktop.ini
 coverage/
 .nyc_output/
 
+# Resultados de Playwright
+test-results/
+playwright-report/
+blob-report/
+playwright/.cache/
+
 # Temporales
 tmp/
 temp/
